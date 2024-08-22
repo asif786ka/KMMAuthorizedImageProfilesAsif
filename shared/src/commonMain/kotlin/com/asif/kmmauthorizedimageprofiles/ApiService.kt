@@ -19,10 +19,6 @@ class ApiService {
     private val baseUrl = "https://authorizedimageprofilesasif-fb449ed181c9.herokuapp.com"
     private val logger = Logger.withTag("ApiService")
 
-    // Data class to handle error responses
-    @Serializable
-    data class ErrorResponse(val error: String)
-
     suspend fun register(email: String, password: String): TokenResponse? {
         return try {
             val requestBody = json.encodeToString(RegisterRequest(email, password))
@@ -83,7 +79,7 @@ class ApiService {
         val rawResponse = response.bodyAsText()
         logger.d { "Raw response: $rawResponse" }
 
-        return if (response.status == HttpStatusCode.OK) {
+        return if (response.status.value != 401 || response.status.value != 404) {
             try {
                 val result = json.decodeFromString<T>(rawResponse)
                 logger.d { "Parsed response: $result" }

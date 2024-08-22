@@ -31,6 +31,7 @@ class LoginViewModel(
                 val response = repository.register(email, password)
                 if (response != null) {
                     securePreferences.saveToken(response.token)
+                    securePreferences.saveUserId(response.userid)
                     _loginState.value = LoginState.Success(response)
                 } else {
                     _loginState.value = LoginState.Error("Registration failed. Please try again.")

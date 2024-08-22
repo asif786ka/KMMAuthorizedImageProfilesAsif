@@ -21,4 +21,4 @@ data class ProfileResponse(val email: String, val avatar_url: String)
 data class AvatarResponse(val avatar_url: String)
 
 @Serializable
-data class ErrorResponse(val error: String)
+data class ErrorResponse(val error: String? = null)

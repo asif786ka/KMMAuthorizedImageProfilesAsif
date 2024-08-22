@@ -32,4 +32,17 @@ class SecurePreferences(context: Context) {
     fun clearToken() {
         sharedPreferences.edit().remove("TOKEN").apply()
     }
+
+    // User ID management
+    fun saveUserId(userId: String) {
+        sharedPreferences.edit().putString("USER_ID", userId).apply()
+    }
+
+    fun getUserId(): String? {
+        return sharedPreferences.getString("USER_ID", null)
+    }
+
+    fun clearUserId() {
+        sharedPreferences.edit().remove("USER_ID").apply()
+    }
 }
