@@ -27,25 +27,39 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(navController: NavHostController) {
+    // Obtain the ViewModel from Koin dependency injection
     val viewModel: ProfileViewModel = koinViewModel()
+
+    // Collect the profile state as a Compose state
     val profileState by viewModel.profileState.collectAsState()
+
+    // Create a CoroutineScope tied to the Composable's lifecycle
     val coroutineScope = rememberCoroutineScope()
+
+    // State to hold the current image bitmap
     var imageBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var isUpdating by remember { mutableStateOf(false) }  // State to manage button content
+
+    // State to manage the update button's progress indicator
+    var isUpdating by remember { mutableStateOf(false) }
+
+    // Obtain the current context
     val context = LocalContext.current
 
+    // Launcher to pick an image from the gallery
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             imageBitmap = viewModel.loadBitmapFromUri(it)
         }
     }
 
+    // Launcher to take a picture with the camera
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
         imageBitmap = bitmap
     }
 
     Scaffold(
         topBar = {
+            // Top AppBar with a back button
             TopAppBar(
                 title = {
                     Text(
@@ -62,6 +76,7 @@ fun ProfileScreen(navController: NavHostController) {
             )
         },
         content = { innerPadding ->
+            // Main content of the Profile screen
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -71,21 +86,28 @@ fun ProfileScreen(navController: NavHostController) {
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Handle different states of profile loading
                 when (profileState) {
                     is ProfileState.Loading -> {
                         CircularProgressIndicator(color = Color.Black)
                     }
                     is ProfileState.Success -> {
+                        // Display the user's email
                         val profile = (profileState as ProfileState.Success).profile
                         Text("Email: ${profile.email}", color = Color.Black)
 
+                        Spacer(modifier = Modifier.height(20.dp))
+
+
+                        // Display the profile image if available
                         imageBitmap?.let { bitmap ->
                             Image(
                                 bitmap = bitmap.asImageBitmap(),
                                 contentDescription = null,
-                                modifier = Modifier.size(100.dp)
+                                modifier = Modifier.size(200.dp)
                             )
                         } ?: run {
+                            // Load and display the image from the avatar URL
                             profile.avatar_url?.let { url ->
                                 coroutineScope.launch {
                                     imageBitmap = if (url.startsWith("data:image")) {
@@ -101,8 +123,9 @@ fun ProfileScreen(navController: NavHostController) {
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(40.dp))
 
+                        // Button to take a picture with the camera
                         Button(
                             onClick = { cameraLauncher.launch(null) },
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
@@ -112,6 +135,7 @@ fun ProfileScreen(navController: NavHostController) {
 
                         Spacer(modifier = Modifier.height(20.dp))
 
+                        // Button to pick an image from the gallery
                         Button(
                             onClick = { galleryLauncher.launch("image/*") },
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
@@ -121,6 +145,7 @@ fun ProfileScreen(navController: NavHostController) {
 
                         Spacer(modifier = Modifier.height(20.dp))
 
+                        // Button to update the avatar
                         Button(
                             onClick = {
                                 imageBitmap?.let { bitmap ->
@@ -133,6 +158,7 @@ fun ProfileScreen(navController: NavHostController) {
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
                         ) {
+                            // Show a progress indicator or "Update Avatar" text based on the updating state
                             if (isUpdating) {
                                 CircularProgressIndicator(
                                     color = Color.White,
@@ -144,6 +170,7 @@ fun ProfileScreen(navController: NavHostController) {
                         }
                     }
                     is ProfileState.Error -> {
+                        // Show an error message if loading the profile fails
                         Toast.makeText(context, "Updating avatar failed", Toast.LENGTH_LONG).show()
                         Text("Error: ${(profileState as ProfileState.Error).message}", color = Color.Red)
                     }
@@ -152,7 +179,7 @@ fun ProfileScreen(navController: NavHostController) {
         }
     )
 
-    // Listen for update avatar state and show toast messages accordingly
+    // Listen for profile state changes and show toast messages accordingly
     LaunchedEffect(profileState) {
         when (profileState) {
             is ProfileState.Success -> {
@@ -165,8 +192,8 @@ fun ProfileScreen(navController: NavHostController) {
         }
     }
 
+    // Load the profile when the composable is first displayed
     LaunchedEffect(Unit) {
         viewModel.getProfile()
     }
 }
-

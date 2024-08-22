@@ -25,6 +25,7 @@ class ProfileViewModel(
     private val context: Context
 ) : ViewModel() {
 
+    // MutableStateFlow to hold the current profile state
     private val _profileState = MutableStateFlow<ProfileState>(ProfileState.Loading)
     val profileState: StateFlow<ProfileState> get() = _profileState
 
@@ -33,6 +34,7 @@ class ProfileViewModel(
         getProfile()
     }
 
+    // Fetch the profile data from the repository
     fun getProfile() {
         val token = securePreferences.getToken()
         val userId = securePreferences.getUserId()
@@ -40,9 +42,11 @@ class ProfileViewModel(
             viewModelScope.launch {
                 _profileState.value = ProfileState.Loading
                 try {
+                    // Fetch the profile using the repository
                     val profile = token?.let { repository.getProfile(userId, it) }
                     _profileState.value = profile?.let { ProfileState.Success(it) }!!
                 } catch (e: Exception) {
+                    // Handle errors by updating the state
                     _profileState.value = ProfileState.Error("Error loading profile: ${e.message}")
                 }
             }
@@ -51,6 +55,7 @@ class ProfileViewModel(
         }
     }
 
+    // Update the user's avatar by compressing and encoding the image
     @RequiresApi(Build.VERSION_CODES.O)
     fun updateAvatar(bitmap: Bitmap) {
         val token = securePreferences.getToken()
@@ -60,9 +65,12 @@ class ProfileViewModel(
                 try {
                     // Compress and encode the image to Base64
                     val avatarBase64 = compressAndEncodeImage(bitmap, maxWidth = 800, maxHeight = 600, initialQuality = 75)
+                    // Update the avatar using the repository
                     token?.let { repository.updateAvatar(userId, avatarBase64, it) }
-                    getProfile()  // Refresh profile after updating avatar
+                    // Refresh profile after updating avatar
+                    getProfile()
                 } catch (e: Exception) {
+                    // Handle errors by updating the state
                     _profileState.value = ProfileState.Error("Error updating avatar: ${e.message}")
                 }
             }
@@ -71,9 +79,10 @@ class ProfileViewModel(
         }
     }
 
+    // Compress and encode the image to ensure it is under 1 MB
     @RequiresApi(Build.VERSION_CODES.O)
     private fun compressAndEncodeImage(bitmap: Bitmap, maxWidth: Int, maxHeight: Int, initialQuality: Int = 100): String {
-        // Calculate the scaling factor
+        // Calculate the scaling factor based on aspect ratio
         val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
         var width = maxWidth
         var height = maxHeight
@@ -83,51 +92,51 @@ class ProfileViewModel(
             width = (height * aspectRatio).toInt()
         }
 
-        // Create a scaled bitmap
+        // Create a scaled bitmap to match the specified dimensions
         val scaledBitmap = Bitmap.createScaledBitmap(bitmap, width, height, true)
 
         var quality = initialQuality
         var encodedString: String
         do {
             val outputStream = ByteArrayOutputStream()
+            // Compress the scaled bitmap to JPEG format
             scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
             val byteArray = outputStream.toByteArray()
 
-            // Convert to Base64 string
+            // Convert the byte array to Base64 string
             encodedString = Base64.getEncoder().encodeToString(byteArray)
 
-            // Reduce the quality
+            // Reduce the quality if the encoded string is too large
             quality -= 5
 
-        } while (encodedString.toByteArray().size >= 1_000_000 && quality > 0) // Continue until under 1 MB or quality is too low
+        } while (encodedString.toByteArray().size >= 1_000_000 && quality > 0) // Continue until the encoded string is under 1 MB
 
         // Prepend the necessary prefix to the Base64 string
         return "data:image/jpeg;base64,$encodedString"
     }
 
+    // Load a Bitmap from a given URI
     fun loadBitmapFromUri(uri: Uri): Bitmap? {
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                // Use ImageDecoder for newer versions of Android
                 ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri))
             } else {
                 @Suppress("DEPRECATION")
+                // Use BitmapFactory for older versions
                 context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
             }
         } catch (e: FileNotFoundException) {
-            //logger.e(e) { "File not found for URI: $uri" }
+            // Handle the case where the file was not found
             null
         } catch (e: Exception) {
-            //logger.e(e) { "Error loading bitmap from URI: $uri" }
+            // Handle other potential errors
             null
         }
     }
-
-    private fun parseUserIdFromToken(token: String): String {
-        // Logic to extract the user ID from the token, placeholder function
-        return "extracted_user_id"
-    }
 }
 
+// Sealed class to represent the different states of the profile
 sealed class ProfileState {
     object Loading : ProfileState()
     data class Success(val profile: ProfileResponse) : ProfileState()
