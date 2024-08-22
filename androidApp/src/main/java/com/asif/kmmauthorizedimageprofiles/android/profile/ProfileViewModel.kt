@@ -51,12 +51,15 @@ class ProfileViewModel(
         }
     }
 
-    fun updateAvatar(avatarBase64: String) {
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun updateAvatar(bitmap: Bitmap) {
         val token = securePreferences.getToken()
         val userId = securePreferences.getUserId()
         if (userId != null) {
             viewModelScope.launch {
                 try {
+                    // Compress and encode the image to Base64
+                    val avatarBase64 = compressAndEncodeImage(bitmap, maxWidth = 800, maxHeight = 600, initialQuality = 75)
                     token?.let { repository.updateAvatar(userId, avatarBase64, it) }
                     getProfile()  // Refresh profile after updating avatar
                 } catch (e: Exception) {
@@ -68,18 +71,38 @@ class ProfileViewModel(
         }
     }
 
-    fun compressImage(bitmap: Bitmap): Bitmap {
-        val outputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
-        val byteArray = outputStream.toByteArray()
-        return BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
-    }
-
     @RequiresApi(Build.VERSION_CODES.O)
-    fun encodeImageToBase64(bitmap: Bitmap): String {
-        val outputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
-        return Base64.getEncoder().encodeToString(outputStream.toByteArray())
+    private fun compressAndEncodeImage(bitmap: Bitmap, maxWidth: Int, maxHeight: Int, initialQuality: Int = 100): String {
+        // Calculate the scaling factor
+        val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
+        var width = maxWidth
+        var height = maxHeight
+        if (bitmap.width > bitmap.height) {
+            height = (width / aspectRatio).toInt()
+        } else {
+            width = (height * aspectRatio).toInt()
+        }
+
+        // Create a scaled bitmap
+        val scaledBitmap = Bitmap.createScaledBitmap(bitmap, width, height, true)
+
+        var quality = initialQuality
+        var encodedString: String
+        do {
+            val outputStream = ByteArrayOutputStream()
+            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+            val byteArray = outputStream.toByteArray()
+
+            // Convert to Base64 string
+            encodedString = Base64.getEncoder().encodeToString(byteArray)
+
+            // Reduce the quality
+            quality -= 5
+
+        } while (encodedString.toByteArray().size >= 1_000_000 && quality > 0) // Continue until under 1 MB or quality is too low
+
+        // Prepend the necessary prefix to the Base64 string
+        return "data:image/jpeg;base64,$encodedString"
     }
 
     fun loadBitmapFromUri(uri: Uri): Bitmap? {
@@ -99,7 +122,6 @@ class ProfileViewModel(
         }
     }
 
-
     private fun parseUserIdFromToken(token: String): String {
         // Logic to extract the user ID from the token, placeholder function
         return "extracted_user_id"
@@ -111,4 +133,3 @@ sealed class ProfileState {
     data class Success(val profile: ProfileResponse) : ProfileState()
     data class Error(val message: String) : ProfileState()
 }
-

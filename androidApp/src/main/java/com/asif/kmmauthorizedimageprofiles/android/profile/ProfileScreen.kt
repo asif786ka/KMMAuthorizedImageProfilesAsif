@@ -1,6 +1,9 @@
 package com.asif.kmmauthorizedimageprofiles.android.profile
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Base64
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -14,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.navigation.NavHostController
@@ -27,6 +31,8 @@ fun ProfileScreen(navController: NavHostController) {
     val profileState by viewModel.profileState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     var imageBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var isUpdating by remember { mutableStateOf(false) }  // State to manage button content
+    val context = LocalContext.current
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
@@ -74,12 +80,23 @@ fun ProfileScreen(navController: NavHostController) {
                         Text("Email: ${profile.email}", color = Color.Black)
 
                         imageBitmap?.let { bitmap ->
-                            Image(bitmap = bitmap.asImageBitmap(), contentDescription = null, modifier = Modifier.size(100.dp))
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.size(100.dp)
+                            )
                         } ?: run {
-                            profile.avatar_url.let { url ->
+                            profile.avatar_url?.let { url ->
                                 coroutineScope.launch {
-                                    val bitmap = viewModel.loadBitmapFromUri(url.toUri())
-                                    imageBitmap = bitmap
+                                    imageBitmap = if (url.startsWith("data:image")) {
+                                        // Decode Base64 image
+                                        val base64Image = url.substringAfter("base64,")
+                                        val decodedByteArray = Base64.decode(base64Image, Base64.DEFAULT)
+                                        BitmapFactory.decodeByteArray(decodedByteArray, 0, decodedByteArray.size)
+                                    } else {
+                                        // Load from URL
+                                        viewModel.loadBitmapFromUri(url.toUri())
+                                    }
                                 }
                             }
                         }
@@ -107,19 +124,27 @@ fun ProfileScreen(navController: NavHostController) {
                         Button(
                             onClick = {
                                 imageBitmap?.let { bitmap ->
-                                    val compressedImage = viewModel.compressImage(bitmap)
-                                    val base64Image = viewModel.encodeImageToBase64(compressedImage)
+                                    isUpdating = true  // Show progress indicator in the button
                                     coroutineScope.launch {
-                                        viewModel.updateAvatar(base64Image)
+                                        viewModel.updateAvatar(bitmap)
+                                        isUpdating = false  // Hide progress indicator after the operation
                                     }
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
                         ) {
-                            Text("Update Avatar", color = Color.White)
+                            if (isUpdating) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(20.dp)  // Adjust size as needed
+                                )
+                            } else {
+                                Text("Update Avatar", color = Color.White)
+                            }
                         }
                     }
                     is ProfileState.Error -> {
+                        Toast.makeText(context, "Updating avatar failed", Toast.LENGTH_LONG).show()
                         Text("Error: ${(profileState as ProfileState.Error).message}", color = Color.Red)
                     }
                 }
@@ -127,7 +152,21 @@ fun ProfileScreen(navController: NavHostController) {
         }
     )
 
+    // Listen for update avatar state and show toast messages accordingly
+    LaunchedEffect(profileState) {
+        when (profileState) {
+            is ProfileState.Success -> {
+                Toast.makeText(context, "Avatar updated successfully", Toast.LENGTH_LONG).show()
+            }
+            is ProfileState.Error -> {
+                Toast.makeText(context, "Updating avatar failed", Toast.LENGTH_LONG).show()
+            }
+            else -> Unit
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.getProfile()
     }
 }
+
