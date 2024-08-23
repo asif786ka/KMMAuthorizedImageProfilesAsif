@@ -70,12 +70,6 @@ struct ProfileScreen: View {
         }
         .navigationTitle("Profile") // Title of the Profile Screen
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarItems(leading: Button(action: {
-            // Back action is handled automatically by NavigationView, so no need to implement
-        }) {
-            Image(systemName: "arrow.left")
-                .foregroundColor(.blue)
-        })
     }
 }
 

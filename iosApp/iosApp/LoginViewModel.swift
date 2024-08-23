@@ -32,6 +32,7 @@ class LoginViewModel: ObservableObject {
         repository.login(email: email, password: password) { result, error in
             if let result = result {
                 self.securePreferences.saveToken(token: result.token)
+                self.securePreferences.saveUserId(userId: result.userid)
                 self.loginState = .success(tokenResponse: result)
             } else if let error = error {
                 self.loginState = .error(message: error.localizedDescription)

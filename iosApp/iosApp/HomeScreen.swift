@@ -50,7 +50,7 @@ struct HomeScreen: View {
             }
             .navigationTitle("Home")
         }
-        .navigationBarHidden(false) // Hide navigation bar when going back to login
+        .navigationBarHidden(true) // Hide navigation bar when going back to login
     }
 }
 
