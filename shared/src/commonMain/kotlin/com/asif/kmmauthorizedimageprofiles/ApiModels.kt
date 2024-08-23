@@ -15,7 +15,7 @@ data class AvatarRequest(val avatar: String)
 data class TokenResponse(val userid: String, val token: String)
 
 @Serializable
-data class ProfileResponse(val email: String, val avatar_url: String)
+data class ProfileResponse(val email: String, val avatar_url: String?)
 
 @Serializable
 data class AvatarResponse(val avatar_url: String)

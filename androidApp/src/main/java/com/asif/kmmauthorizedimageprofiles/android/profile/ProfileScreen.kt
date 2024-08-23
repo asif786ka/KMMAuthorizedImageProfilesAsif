@@ -9,18 +9,24 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.navigation.NavHostController
+import coil.compose.rememberImagePainter
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -92,7 +98,7 @@ fun ProfileScreen(navController: NavHostController) {
                         CircularProgressIndicator(color = Color.Black)
                     }
                     is ProfileState.Success -> {
-                        // Display the user's email
+                 /*       // Display the user's email
                         val profile = (profileState as ProfileState.Success).profile
                         Text("Email: ${profile.email}", color = Color.Black)
 
@@ -121,7 +127,10 @@ fun ProfileScreen(navController: NavHostController) {
                                     }
                                 }
                             }
-                        }
+                        }*/
+
+
+                        ProfileCard(profileState = profileState, viewModel = viewModel)
 
                         Spacer(modifier = Modifier.height(40.dp))
 
@@ -195,5 +204,72 @@ fun ProfileScreen(navController: NavHostController) {
     // Load the profile when the composable is first displayed
     LaunchedEffect(Unit) {
         viewModel.getProfile()
+    }
+}
+
+@Composable
+fun ProfileCard(profileState: ProfileState, viewModel: ProfileViewModel) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var imageBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    Card(
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Display the user's email
+            val profile = (profileState as ProfileState.Success).profile
+            Text("Email: ${profile.email}", color = Color.Black)
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Display the profile image if available, or load a placeholder image
+            if (imageBitmap != null) {
+                Image(
+                    bitmap = imageBitmap!!.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(200.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                // Placeholder image while loading
+                val placeholderUrl = "https://via.placeholder.com/200"
+                val painter: Painter = rememberImagePainter(placeholderUrl)
+                Image(
+                    painter = painter,
+                    contentDescription = "Placeholder Image",
+                    modifier = Modifier
+                        .size(200.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+
+                // Load the profile image asynchronously
+                profile.avatar_url?.let { url ->
+                    coroutineScope.launch {
+                        imageBitmap = if (url.startsWith("data:image")) {
+                            // Decode Base64 image
+                            val base64Image = url.substringAfter("base64,")
+                            val decodedByteArray = Base64.decode(base64Image, Base64.DEFAULT)
+                            BitmapFactory.decodeByteArray(decodedByteArray, 0, decodedByteArray.size)
+                        } else {
+                            // Load from URL
+                            viewModel.loadBitmapFromUri(url.toUri())
+                        }
+                    }
+                }
+            }
+        }
     }
 }

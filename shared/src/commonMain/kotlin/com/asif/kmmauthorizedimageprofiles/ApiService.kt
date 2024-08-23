@@ -13,7 +13,10 @@ import kotlinx.serialization.json.Json
 
 class ApiService {
 
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+    }
     private val client = HttpClient()
 
     private val baseUrl = "https://authorizedimageprofilesasif-fb449ed181c9.herokuapp.com"
