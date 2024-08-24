@@ -35,7 +35,7 @@ kotlin {
                 implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kermit)
-                implementation(libs.accompanist.permissions)
+                implementation(libs.accompanist.permissions) // Assuming you use Kermit for logging
             }
         }
 
@@ -48,6 +48,21 @@ kotlin {
         val iosMain by creating {
             dependencies {
                 implementation(libs.ktor.client.ios)
+            }
+        }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test")) // Kotlin Test framework
+
+                // Ktor Mock Engine for testing HTTP client
+                implementation("io.ktor:ktor-client-mock:2.0.0")
+
+                // Coroutine Test Library for testing coroutines
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.0")
+
+                // Kermit logging library (if you're using Kermit for logging)
+                implementation("co.touchlab:kermit:0.1.9")
             }
         }
 

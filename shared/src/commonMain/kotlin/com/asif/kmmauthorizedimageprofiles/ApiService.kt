@@ -11,13 +11,16 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
-class ApiService {
+class ApiService(private val client: HttpClient) {
+
+    // Secondary constructor with no arguments, calls the primary constructor
+    constructor() : this(provideHttpClient())
 
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
     }
-    private val client = HttpClient()
+    //private val client = HttpClient()
 
     private val baseUrl = "https://authorizedimageprofilesasif-fb449ed181c9.herokuapp.com"
     private val logger = Logger.withTag("ApiService")
