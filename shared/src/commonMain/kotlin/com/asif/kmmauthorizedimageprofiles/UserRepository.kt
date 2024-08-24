@@ -1,6 +1,6 @@
 package com.asif.kmmauthorizedimageprofiles
 
-class UserRepository(private val api: ApiService) {
+open class UserRepository(private val api: ApiService) {
 
     suspend fun register(email: String, password: String): TokenResponse? {
         return api.register(email, password)
