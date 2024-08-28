@@ -80,7 +80,7 @@ class ProfileViewModel(
     }
 
     // Compress and encode the image to ensure it is under 1 MB
-    @RequiresApi(Build.VERSION_CODES.O)
+    /*@RequiresApi(Build.VERSION_CODES.O)
     private fun compressAndEncodeImage(bitmap: Bitmap, maxWidth: Int, maxHeight: Int, initialQuality: Int = 100): String {
         // Calculate the scaling factor based on aspect ratio
         val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
@@ -113,7 +113,40 @@ class ProfileViewModel(
 
         // Prepend the necessary prefix to the Base64 string
         return "data:image/jpeg;base64,$encodedString"
+    }*/
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun compressAndEncodeImage(bitmap: Bitmap, maxWidth: Int, maxHeight: Int, initialQuality: Int = 100): String {
+        // Scaling factor calculation and bitmap scaling remain the same
+        val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
+        var width = maxWidth
+        var height = maxHeight
+        if (bitmap.width > bitmap.height) {
+            height = (width / aspectRatio).toInt()
+        } else {
+            width = (height * aspectRatio).toInt()
+        }
+
+        val scaledBitmap = Bitmap.createScaledBitmap(bitmap, width, height, true)
+
+        var quality = initialQuality
+        val outputStream = ByteArrayOutputStream()
+        scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+        var byteArray = outputStream.toByteArray()
+        var encodedString = Base64.getEncoder().encodeToString(byteArray)
+
+        // If the size is too large, calculate a closer estimate of the needed quality
+        if (encodedString.toByteArray().size >= 1_000_000) {
+            quality = (1_000_000f / encodedString.toByteArray().size * initialQuality).toInt()
+            outputStream.reset()
+            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+            byteArray = outputStream.toByteArray()
+            encodedString = Base64.getEncoder().encodeToString(byteArray)
+        }
+
+        return "data:image/jpeg;base64,$encodedString"
     }
+
 
     // Load a Bitmap from a given URI
     fun loadBitmapFromUri(uri: Uri): Bitmap? {
